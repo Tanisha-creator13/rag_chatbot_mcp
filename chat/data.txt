@@ -1,0 +1,23 @@
+Welcome to the RAG chatbot !
+
+This chatbot is designed to demonstrate a simple retrieval-augmented generation pipeline using:
+- Django REST framework for backend API handling.
+- FAISS for vector storage and retrieval.
+- LangChain for chaining together LLM and retriever logic.
+- OpenAI GPT model for generation.
+
+Key features include:
+1. Loading static knowledge base documents.
+2. Vectorizing the content and storing it with FAISS.
+3. Accepting user input and retrieving relevant chunks.
+4. Responding based on combined retrieval and generation.
+
+Q&A:
+Ques: What is this chatbot?
+Ans: A Django backend chatbot using retrieval-augmented generation (RAG) with OpenAI and FAISS.
+
+Ques: What is FAISS used for?
+Ans: FAISS is used to store and retrieve document embeddings for efficient semantic search.
+
+Ques: What models does this chatbot use?
+Ans: It uses OpenAI's GPT model through LangChain’s RetrievalQA chain.
