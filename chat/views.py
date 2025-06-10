@@ -30,6 +30,11 @@ from django.http import JsonResponse
 import json
 from django.views.decorators.csrf import csrf_exempt
 from .mcp_server import MCPServer
+
+from rest_framework import generics
+from django.contrib.auth.models import User
+from .serializers import RegisterSerializer
+
 mcp = MCPServer()
 
 intent_classifier = IntentClassifier()
@@ -54,3 +59,6 @@ def rag_chat(request):
         response = mcp.query(query)
         return JsonResponse({"reply": response})
 
+class RegisterView(generics.CreateAPIView):
+    queryset = User.objects.all()
+    serializer_class = RegisterSerializer
