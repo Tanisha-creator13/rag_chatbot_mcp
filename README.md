@@ -1,14 +1,12 @@
 # MCP RAG Chatbot (Django Backend)
 
-A lightweight backend chatbot built with **Django**, integrating **MCPServer**, **Retrieval-Augmented Generation (RAG)**, **FAISS** for semantic search, and **OpenAI** for response generation.
+A lightweight  chatbot built with **Django**, integrating **MCPServer**, **Retrieval-Augmented Generation (RAG)**, **Supabase** for similarity search, and **OpenAI** for response generation.
 
 ---
 
 ## Features
 
-- **MCPServer Integration**: Maintains conversational context with memory.
-- **Basic RAG Setup**: Retrieves relevant chunks before generating response.
-- **FAISS Embeddings**: Uses in-memory FAISS index for similarity search.
+
 
 ---
 ## Why This is Pretty Cool
