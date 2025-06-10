@@ -7,7 +7,7 @@ class IntentClassifier:
         # Define intents using regex patterns
         patterns = {
             "greeting": r"\b(hi|hello|hey|good morning|good evening|what's up|how are you)\b",
-            "thanks": r"\b(thanks|thank you|appreciate it)\b",
+            "thanks": r"\b(thanks|thank you|thankyou|appreciate it)\b",
             "goodbye": r"\b(bye|goodbye|see you|later)\b",
             "faq": r"\b(what|where|when|why|how|explain|tell me)\b",
         }
