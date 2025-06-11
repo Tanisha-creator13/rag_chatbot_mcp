@@ -1,6 +1,11 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from .views import RegisterView, rag_chat
+from .views import (
+    RegisterView, 
+    rag_chat,
+    ChatSessionListCreate,
+    ChatMessageList
+)
 
 urlpatterns = [
     # Auth endpoints
@@ -8,6 +13,10 @@ urlpatterns = [
     path('api/auth/login/', TokenObtainPairView.as_view(), name='login'),
     path('api/auth/refresh/', TokenRefreshView.as_view(), name='refresh'),
     
-    # Chat endpoint
-    path('chat/', rag_chat),
+    # Chat session endpoints
+    path('api/sessions/', ChatSessionListCreate.as_view(), name='chat_sessions'),
+    path('api/messages/<int:session_id>/', ChatMessageList.as_view(), name='chat_messages'),
+    
+    # Main chat endpoint
+    path('api/chat/', rag_chat, name='rag_chat'),
 ]

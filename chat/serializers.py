@@ -16,22 +16,14 @@ class RegisterSerializer(serializers.ModelSerializer):
         )
         return user
 
-from rest_framework import generics
-from rest_framework.permissions import AllowAny
-from django.contrib.auth.models import User
-from .serializers import RegisterSerializer
-from rest_framework.response import Response
-from rest_framework import status
+from .models import ChatSession, ChatMessage
 
-class RegisterView(generics.CreateAPIView):
-    queryset = User.objects.all()
-    serializer_class = RegisterSerializer
-    permission_classes = [AllowAny]
+class ChatSessionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ChatSession
+        fields = ['id', 'title', 'created_at']
 
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        if not serializer.is_valid():
-            print("Registration error:", serializer.errors)  # Log errors for debugging
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        self.perform_create(serializer)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+class ChatMessageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ChatMessage
+        fields = ['content', 'is_user', 'timestamp']

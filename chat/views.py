@@ -1,30 +1,3 @@
-# from django.http import JsonResponse
-# # from django.views.decorators.http import require_POST
-# import json
-# from django.views.decorators.csrf import csrf_exempt
-# from django.http import StreamingHttpResponse
-# from .mcp_server import MCPServer
-# mcp = MCPServer()
-# @csrf_exempt
-# def rag_chat(request):
-#     if request.method == "POST":
-#         data = json.loads(request.body)
-#         query = data.get("message", "").strip().lower()
-        
-#         # Handle greetings
-#         greetings = ["hi", "hello", "hey","hiiiiiii","hellloooooo","heloooooo","heyyyy" "good morning", "good evening"]
-#         thanks = ["thanks", "thank you"]
-#         if query in greetings:
-#             return JsonResponse({"reply": "Hello! How can I assist you today?"})
-#         if query in thanks:
-#             return JsonResponse({"reply": "You're welcome! If you have any other questions, feel free to ask."})
-
-#         # Otherwise, use the RAG pipeline
-#         response = mcp.query(query)
-#         return JsonResponse({"reply": response})
-#     else:
-#         return JsonResponse({"reply": "Method not allowed"}, status=405)
-
 from .intent_classifier import IntentClassifier
 from django.http import JsonResponse
 import json
@@ -34,6 +7,12 @@ from .mcp_server import MCPServer
 from rest_framework import generics
 from django.contrib.auth.models import User
 from .serializers import RegisterSerializer
+from rest_framework.decorators import permission_classes
+from rest_framework.permissions import IsAuthenticated
+
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.permissions import AllowAny
 
 mcp = MCPServer()
 
@@ -45,20 +24,79 @@ predefined_responses = {
     "other": "I'm here to help with information. Could you rephrase your question?",
 }
 
-@csrf_exempt
-def rag_chat(request):
-    if request.method == "POST":
-        data = json.loads(request.body)
-        query = data.get("message", "").strip()
-        
-        intent = intent_classifier.classify(query)
-        
-        if intent in predefined_responses:
-            return JsonResponse({"reply": predefined_responses[intent]})
-        
-        response = mcp.query(query)
-        return JsonResponse({"reply": response})
-
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = RegisterSerializer
+    permission_classes = [AllowAny]
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+from .models import ChatSession, ChatMessage  # Changed from Conversation
+from .serializers import ChatSessionSerializer, ChatMessageSerializer  # New serializers
+
+# Remove Conversation-related views and keep only session-based views
+class ChatSessionListCreate(generics.ListCreateAPIView):
+    serializer_class = ChatSessionSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return ChatSession.objects.filter(user=self.request.user)
+
+class ChatMessageList(generics.ListAPIView):
+    serializer_class = ChatMessageSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        session_id = self.kwargs['session_id']
+        return ChatMessage.objects.filter(
+            session_id=session_id,
+            session__user=self.request.user
+        )
+
+@csrf_exempt
+@permission_classes([IsAuthenticated])
+def rag_chat(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            query = data.get("message", "").strip()
+            session_id = data.get("session_id")  # Changed from conversation_id
+            user = request.user
+
+            # Get or create session
+            if session_id:
+                session = ChatSession.objects.get(id=session_id, user=user)
+            else:
+                session = ChatSession.objects.create(user=user, title=query[:50])
+
+            # Save user message
+            ChatMessage.objects.create(
+                session=session,
+                content=query,
+                is_user=True
+            )
+
+            # Intent handling remains same
+            intent = intent_classifier.classify(query)
+            reply = predefined_responses[intent] if intent in predefined_responses else mcp.query(query)
+
+            # Save bot response
+            ChatMessage.objects.create(
+                session=session,
+                content=reply,
+                is_user=False
+            )
+
+            return JsonResponse({
+                "reply": reply,
+                "session_id": str(session.id)  # Changed key
+            })
+
+        except Exception as e:
+            print(f"Chat error: {str(e)}")
+            return JsonResponse({"error": "Internal server error"}, status=500)

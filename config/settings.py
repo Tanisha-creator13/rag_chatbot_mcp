@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'documents',
     'chat',
     'corsheaders',
     'rest_framework_simplejwt',
@@ -145,8 +146,18 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 TABLE_NAME = os.getenv("TABLE_NAME", "documents")
+
+
+SUPABASE_CONFIG = {
+    'URL': os.getenv('SUPABASE_URL'),
+    'KEY': os.getenv('SUPABASE_KEY'),
+    'JWT_SECRET': os.getenv('SUPABASE_JWT_SECRET')
+}
