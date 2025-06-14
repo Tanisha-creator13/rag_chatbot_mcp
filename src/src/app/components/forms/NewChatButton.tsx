@@ -1,4 +1,4 @@
-// import { supabase } from '@/utils/supabase/client';
+"use client";
 import { createClient } from '@/utils/supabase/client'
 const supabase = createClient()
 
@@ -8,13 +8,18 @@ interface NewChatButtonProps {
 
 export default function NewChatButton({ onCreate }: NewChatButtonProps) {
   const handleNewChat = async () => {
+    console.log("New Chat button clicked");
     const { data, error } = await supabase
-      .from('chatsession')
+      .from('chat_chatsession') // Use the correct table name
       .insert([{}])
       .select()
       .single();
 
-    if (!error && data) {
+    if (error) {
+      console.error("Supabase error:", error);
+    }
+    if (data) {
+      console.log("New session created:", data);
       onCreate(data.id);
     }
   };

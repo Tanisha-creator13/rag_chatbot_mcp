@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from "react";
-import { createClient } from '@/utils/supabase/client';
+import { supabase } from '@/utils/supabase/client';
 import { useAuth } from '@/context/auth-context';
 import ChatSidebar from '@/app/components/forms/ChatSidebar';
 
@@ -9,12 +9,14 @@ type Message = {
   id: string;
   content: string;
   is_user: boolean;
+  session_id: string;
   created_at?: string;
 };
 
 type Session = {
   id: string;
   title: string;
+  user_id: string;
   created_at: string;
 };
 
@@ -23,21 +25,31 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const [sessions, setSessions] = useState<Session[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
   const { isAuthenticated } = useAuth();
-  const supabase = createClient();
 
-  // Load sessions when authenticated
+  // Load sessions with RLS enforcement
   useEffect(() => {
     if (!isAuthenticated) return;
 
     const loadSessions = async () => {
-      const { data, error } = await supabase
-        .from('chat_chatsession')
-        .select('id, title, created_at')
-        .order('created_at', { ascending: false });
+      setLoading(true);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) throw new Error("No active session");
 
-      if (!error && data) {
-        setSessions(data);
+        const { data, error } = await supabase
+          .from('chat_chatsession')
+          .select('id, title, created_at, user_id')
+          .eq('user_id', session.user.id)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        setSessions(data || []);
+      } catch (error) {
+        console.error('Session load error:', error);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -49,35 +61,53 @@ export default function ChatPage() {
     if (!activeSessionId) return;
 
     const loadMessages = async () => {
-      const { data, error } = await supabase
-        .from('chat_chatmessage')
-        .select('*')
-        .eq('session_id', activeSessionId)
-        .order('created_at');
+      setLoading(true);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) throw new Error("No active session");
 
-      if (!error && data) {
-        setMessages(data.map(msg => ({
-          id: msg.id,
-          content: msg.content,
-          is_user: msg.is_user
-        })));
+        const { data, error } = await supabase
+          .from('chat_chatmessage')
+          .select('*')
+          .eq('session_id', activeSessionId)
+          .eq('user_id', session.user.id)
+          .order('created_at');
+
+        if (error) throw error;
+        setMessages(data || []);
+      } catch (error) {
+        console.error('Message load error:', error);
+      } finally {
+        setLoading(false);
       }
     };
 
     loadMessages();
   }, [activeSessionId]);
 
-  const createNewSession = async () => {
-    const { data, error } = await supabase
-      .from('chat_chatsession')
-      .insert([{}])
-      .select()
-      .single();
+  const createNewSession = async (): Promise<string | null> => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) throw new Error("User not authenticated");
 
-    if (!error && data) {
+      const { data, error } = await supabase
+        .from('chat_chatsession')
+        .insert({  
+          title: 'New Chat',
+          user_id: session.user.id  // Use session user ID directly
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      
       setSessions(prev => [data, ...prev]);
       setActiveSessionId(data.id);
       setMessages([]);
+      return data.id;
+    } catch (error) {
+      console.error('Session creation error:', error);
+      return null;
     }
   };
 
@@ -86,62 +116,75 @@ export default function ChatPage() {
     if (!input.trim() || !activeSessionId) return;
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) throw new Error("User not authenticated");
+
       // Save user message
       const { data: userMsg, error: userError } = await supabase
         .from('chat_chatmessage')
         .insert({
           content: input,
           is_user: true,
-          session_id: activeSessionId
+          session_id: activeSessionId,
+          user_id: session.user.id
         })
         .select()
         .single();
 
       if (userError) throw userError;
-
-      setMessages(prev => [...prev, {
-        id: userMsg.id,
-        content: userMsg.content,
-        is_user: userMsg.is_user
-      }]);
-
+      setMessages(prev => [...prev, userMsg]);
       setInput("");
 
       // Get bot response
-      const res = await fetch("/api/chat", {
+      const res = await fetch("/api/chat", { 
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}` 
+        },
         body: JSON.stringify({ 
           message: input,
           session_id: activeSessionId 
         }),
       });
-      
-      if (!res.ok) throw new Error('API request failed');
-      
-      const data = await res.json();
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "API request failed");
+      }
+
+      const botResponse = await res.json();
 
       // Save bot response
       const { data: botMsg, error: botError } = await supabase
         .from('chat_chatmessage')
         .insert({
-          content: data.reply || "No response",
+          content: botResponse.reply,
           is_user: false,
-          session_id: activeSessionId
+          session_id: activeSessionId,
+          user_id: session.user.id
         })
         .select()
         .single();
 
-      if (!botError && botMsg) {
-        setMessages(prev => [...prev, {
-          id: botMsg.id,
-          content: botMsg.content,
-          is_user: botMsg.is_user
-        }]);
-      }
+      if (botError) throw botError;
+      setMessages(prev => [...prev, botMsg]);
+
     } catch (error) {
-      console.error('Message submission error:', error);
+      console.error('Submission error:', error);
+      if (error instanceof Error && error.message.includes("401")) {
+        await supabase.auth.signOut();
+      }
     }
+  }
+
+  // Add loading state UI
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      </div>
+    );
   }
 
   return (

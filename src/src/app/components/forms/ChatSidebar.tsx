@@ -1,6 +1,7 @@
+"use client"; 
+
 import { useState, useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
-
 interface Session {
   id: string;
   title: string;
@@ -10,7 +11,7 @@ interface Session {
 interface ChatSidebarProps {
   sessions: Session[];
   activeSessionId: string | null;
-  onCreateNew: () => Promise<void>;
+  onCreateNew: () => Promise<string | null>; 
   onSelectSession: (sessionId: string) => void;
 }
 
@@ -20,10 +21,20 @@ export default function ChatSidebar({
   onCreateNew,
   onSelectSession
 }: ChatSidebarProps) {
+  const handleNewChat = async () => {
+    console.log("handleNewChat called");
+    const newSessionId = await onCreateNew();
+    if (newSessionId) {
+      onSelectSession(newSessionId);
+    }
+  };
+
+
+
   return (
     <div className="w-64 bg-gray-800 p-4 flex flex-col">
       <button 
-        onClick={onCreateNew}
+        onClick={handleNewChat}
         className="w-full p-2 mb-4 bg-blue-600 hover:bg-blue-700 rounded text-white"
       >
         New Chat
@@ -50,3 +61,4 @@ export default function ChatSidebar({
     </div>
   );
 }
+
