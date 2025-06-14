@@ -1,9 +1,10 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { supabase } from '@/utils/supabase/client';
 
 export function SigninForm() {
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const router = useRouter();
@@ -11,16 +12,16 @@ export function SigninForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    const res = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
     });
-    if (res.ok) {
-      router.push("/"); // Redirect to homepage/chat after login
+
+    if (error) {
+      setError(error.message);
     } else {
-      const data = await res.json();
-      setError(data.error || "Login failed");
+      router.push("/");
     }
   }
 
@@ -28,10 +29,10 @@ export function SigninForm() {
     <form onSubmit={handleSubmit} className="max-w-sm mx-auto p-4 border rounded">
       <h2 className="text-xl font-semibold mb-4">Sign In</h2>
       <input
-        type="text"
-        placeholder="Username"
-        value={username}
-        onChange={(e) => setUsername(e.target.value)}
+        type="email"
+        placeholder="Email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
         required
         className="w-full mb-3 p-2 border rounded"
       />
