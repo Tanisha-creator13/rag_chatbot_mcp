@@ -1,39 +1,41 @@
 "use client";
-import { createContext, useContext, useEffect, useState } from "react";
-import { getCookie } from "cookies-next";
+import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { supabase } from "@/utils/supabase/client";
+import { Session } from "@supabase/supabase-js";
 
 type AuthContextType = {
+  session: Session | null;
   isAuthenticated: boolean;
-  login: (token: string) => void;
-  logout: () => void;
 };
 
 const AuthContext = createContext<AuthContextType>({
+  session: null,
   isAuthenticated: false,
-  login: () => {},
-  logout: () => {},
 });
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [session, setSession] = useState<Session | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    // Check for token on initial load
-    const token = getCookie("access_token");
-    setIsAuthenticated(!!token);
+    const initializeAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setSession(session);
+      setIsAuthenticated(!!session);
+    };
+
+    initializeAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      setIsAuthenticated(!!session);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const login = (token: string) => {
-    setIsAuthenticated(true);
-  };
-
-  const logout = () => {
-    document.cookie = "access_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;";
-    setIsAuthenticated(false);
-  };
-
   return (
-    <AuthContext.Provider value={{ isAuthenticated, login, logout }}>
+    <AuthContext.Provider value={{ session, isAuthenticated }}>
       {children}
     </AuthContext.Provider>
   );

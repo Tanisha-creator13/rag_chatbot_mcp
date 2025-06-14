@@ -2,48 +2,53 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
   try {
-    const { message, conversationId }: { message: string; conversationId: string } = await req.json();
-    
-    if (!conversationId) {
+    const authHeader = req.headers.get("Authorization");
+
+    if (!authHeader) {
       return NextResponse.json(
-        { reply: "Conversation ID is required" },
+        { error: "Authorization header required" },
+        { status: 401 }
+      );
+    }
+
+    const { message, session_id }: { message?: string; session_id?: string } = await req.json();
+
+    if (!message || message.trim() === "") {
+      return NextResponse.json(
+        { error: "Message is required" },
         { status: 400 }
       );
     }
 
-    const backendUrl = process.env.BACKEND_URL || "http://localhost:8000/chat/";
-    
-    // Forward to Django backend with conversation ID
+    const backendUrl = process.env.BACKEND_URL || "http://localhost:8000/api/chat/";
+
     const response = await fetch(backendUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        message,
-        conversation_id: conversationId  
-      }),
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": authHeader,
+      },
+      body: JSON.stringify({ message, session_id }),
     });
 
-    // Handle Django response
-    const responseText = await response.text();
-    
+    const data = await response.json();
+
     if (!response.ok) {
-      console.error("Django API error:", responseText);
+      console.error("Django API error:", data);
       return NextResponse.json(
-        { reply: "Backend error: " + responseText },
-        { status: 500 }
+        { error: data.error || "Backend error" },
+        { status: response.status }
       );
     }
 
-    const data = JSON.parse(responseText);
-    return NextResponse.json({ 
+    return NextResponse.json({
       reply: data.reply,
-      conversationId: data.conversation_id || conversationId
+      session_id: data.session_id || session_id,
     });
-
   } catch (error) {
     console.error("API route error:", error);
     return NextResponse.json(
-      { reply: "Internal server error. Check logs." },
+      { error: "Internal server error. Check logs." },
       { status: 500 }
     );
   }

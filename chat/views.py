@@ -14,6 +14,9 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 
+from rest_framework.decorators import api_view, authentication_classes
+from rest_framework_simplejwt.authentication import JWTAuthentication
+
 mcp = MCPServer()
 
 intent_classifier = IntentClassifier()
@@ -36,10 +39,9 @@ class RegisterView(generics.CreateAPIView):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-from .models import ChatSession, ChatMessage  # Changed from Conversation
-from .serializers import ChatSessionSerializer, ChatMessageSerializer  # New serializers
+from .models import ChatSession, ChatMessage 
+from .serializers import ChatSessionSerializer, ChatMessageSerializer
 
-# Remove Conversation-related views and keep only session-based views
 class ChatSessionListCreate(generics.ListCreateAPIView):
     serializer_class = ChatSessionSerializer
     permission_classes = [IsAuthenticated]
@@ -59,44 +61,46 @@ class ChatMessageList(generics.ListAPIView):
         )
 
 @csrf_exempt
+@api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def rag_chat(request):
-    if request.method == "POST":
+    try:
+        data = json.loads(request.body)
+        print("Request data:", data)
+        print("Authenticated user:", request.user)
+
+        query = data.get("message", "").strip()
+        session_id = data.get("session_id")
+        user = request.user
+
+        if not session_id:
+            return JsonResponse({"error": "session_id is required"}, status=400)
+
         try:
-            data = json.loads(request.body)
-            query = data.get("message", "").strip()
-            session_id = data.get("session_id")  # Changed from conversation_id
-            user = request.user
+            session = ChatSession.objects.get(id=session_id, user=user)
+        except ChatSession.DoesNotExist:
+            session = ChatSession.objects.create(user=user, title=query[:50])
 
-            # Get or create session
-            if session_id:
-                session = ChatSession.objects.get(id=session_id, user=user)
-            else:
-                session = ChatSession.objects.create(user=user, title=query[:50])
+        ChatMessage.objects.create(session=session, content=query, is_user=True)
 
-            # Save user message
-            ChatMessage.objects.create(
-                session=session,
-                content=query,
-                is_user=True
-            )
+        intent = intent_classifier.classify(query)
+        reply = predefined_responses.get(intent, mcp.query(query))
 
-            # Intent handling remains same
-            intent = intent_classifier.classify(query)
-            reply = predefined_responses[intent] if intent in predefined_responses else mcp.query(query)
+        ChatMessage.objects.create(session=session, content=reply, is_user=False)
 
-            # Save bot response
-            ChatMessage.objects.create(
-                session=session,
-                content=reply,
-                is_user=False
-            )
+        return JsonResponse({
+            "reply": reply,
+            "session_id": str(session.id)
+        })
 
-            return JsonResponse({
-                "reply": reply,
-                "session_id": str(session.id)  # Changed key
-            })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({"error": str(e)}, status=500)
 
-        except Exception as e:
-            print(f"Chat error: {str(e)}")
-            return JsonResponse({"error": "Internal server error"}, status=500)
+
+from rest_framework_simplejwt.views import TokenObtainPairView
+from .serializers import CustomTokenObtainPairSerializer
+
+class CustomTokenObtainPairView(TokenObtainPairView):
+    serializer_class = CustomTokenObtainPairSerializer
