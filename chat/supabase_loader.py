@@ -22,13 +22,26 @@ class SupabaseKnowledgeSource:
             ).data[0].embedding
 
             # Query Supabase
-            response = supabase_client.rpc(
-                'match_documents',
+            vector_str = f"[{','.join(str(x) for x in embedding)}]"
+            print(f"Sending vector to RPC: {vector_str[:100]}... total length: {len(vector_str)}")
+
+            response = supabase_client.postgrest.rpc(
+                "match_documents",
                 {
-                    'query_embedding': embedding,
-                    'match_count': top_k
+                    "query_embedding": vector_str,
+                    "match_count": top_k
                 }
             ).execute()
+
+
+            print("Raw Supabase response:", response.data)
+
+
+            print(f"Query: {query}")
+            print(f"Embedding: {embedding[:5]}")
+            print(f"RPC Response: {response.data}")
+            print(f"Embedding length: {len(embedding)}")
+
 
             # Extract valid chunks
             return [
@@ -36,14 +49,15 @@ class SupabaseKnowledgeSource:
                 for doc in response.data
                 if self._is_valid_chunk(doc.get(self.text_column, ""))
             ][:top_k]
+    
+
 
         except Exception as e:
             print(f"Supabase error: {str(e)}")
             return []
 
     def _is_valid_chunk(self, text: str) -> bool:
-        """Simplified validation"""
-        return isinstance(text, str) and 10 < len(text) < 10000
+        return isinstance(text, str) and len(text.strip()) > 5
 
 # Initialize knowledge source
 knowledge_base = SupabaseKnowledgeSource()

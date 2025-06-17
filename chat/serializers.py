@@ -27,3 +27,16 @@ class ChatMessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = ChatMessage
         fields = ['content', 'is_user', 'timestamp']
+
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        # Add custom claims
+        data.update({
+            'user_id': self.user.id,
+            'username': self.user.username,
+            'email': self.user.email
+        })
+        return data

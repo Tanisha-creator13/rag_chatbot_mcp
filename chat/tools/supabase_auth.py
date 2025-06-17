@@ -2,9 +2,21 @@ import jwt
 import os
 from rest_framework.authentication import BaseAuthentication
 from rest_framework.exceptions import AuthenticationFailed
-from django.contrib.auth.models import AnonymousUser
 
 SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")
+
+class SupabaseUser:
+    def __init__(self, payload):
+        self.payload = payload
+        self.id = payload.get("sub")  # Supabase user ID
+        self.email = payload.get("email")
+
+    @property
+    def is_authenticated(self):
+        return True
+
+    def __str__(self):
+        return f"SupabaseUser({self.id})"
 
 class SupabaseJWTAuthentication(BaseAuthentication):
     def authenticate(self, request):
@@ -21,7 +33,7 @@ class SupabaseJWTAuthentication(BaseAuthentication):
                 algorithms=["HS256"],
                 options={"verify_aud": False},
             )
-            return (AnonymousUser(), None)
+            return (SupabaseUser(payload), None)
 
         except jwt.ExpiredSignatureError:
             raise AuthenticationFailed("JWT has expired")

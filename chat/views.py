@@ -1,3 +1,4 @@
+from uuid import uuid4
 from .intent_classifier import IntentClassifier
 from django.http import JsonResponse
 import json
@@ -14,8 +15,11 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 
-from rest_framework.decorators import api_view, authentication_classes
-from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework.decorators import api_view
+from chat.tools.supabase_auth import SupabaseJWTAuthentication 
+from rest_framework.decorators import authentication_classes
+from uuid import UUID
+
 
 mcp = MCPServer()
 
@@ -38,55 +42,62 @@ class RegisterView(generics.CreateAPIView):
         self.perform_create(serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-
 from .models import ChatSession, ChatMessage 
 from .serializers import ChatSessionSerializer, ChatMessageSerializer
 
 class ChatSessionListCreate(generics.ListCreateAPIView):
     serializer_class = ChatSessionSerializer
     permission_classes = [IsAuthenticated]
+    authentication_classes = [SupabaseJWTAuthentication]
 
     def get_queryset(self):
-        return ChatSession.objects.filter(user=self.request.user)
+        return ChatSession.objects.filter(user_id=self.request.user.id)
+
+    def perform_create(self, serializer):
+        serializer.save(user_id=self.request.user.id)
 
 class ChatMessageList(generics.ListAPIView):
     serializer_class = ChatMessageSerializer
     permission_classes = [IsAuthenticated]
+    authentication_classes = [SupabaseJWTAuthentication]
 
     def get_queryset(self):
         session_id = self.kwargs['session_id']
         return ChatMessage.objects.filter(
             session_id=session_id,
-            session__user=self.request.user
+            session__user_id=self.request.user.id
         )
 
 @csrf_exempt
 @api_view(['POST'])
+@authentication_classes([SupabaseJWTAuthentication])
 @permission_classes([IsAuthenticated])
 def rag_chat(request):
     try:
         data = json.loads(request.body)
-        print("Request data:", data)
-        print("Authenticated user:", request.user)
-
         query = data.get("message", "").strip()
         session_id = data.get("session_id")
-        user = request.user
+        user_id = UUID(request.user.payload["sub"])  # Supabase user ID from JWT
 
         if not session_id:
             return JsonResponse({"error": "session_id is required"}, status=400)
 
         try:
-            session = ChatSession.objects.get(id=session_id, user=user)
+            session = ChatSession.objects.get(id=session_id, user_id=user_id)
         except ChatSession.DoesNotExist:
-            session = ChatSession.objects.create(user=user, title=query[:50])
+            session = ChatSession.objects.create(id=uuid4(), user_id=user_id, title=query[:50])
 
-        ChatMessage.objects.create(session=session, content=query, is_user=True)
+        ChatMessage.objects.create(id=uuid4(), session=session, content=query, is_user=True)
 
         intent = intent_classifier.classify(query)
-        reply = predefined_responses.get(intent, mcp.query(query))
+        if intent in predefined_responses and intent != "other":
+            reply = predefined_responses[intent]
+        else:
+            print(f"Calling RAG MCP with query: {query}")
+            reply = mcp.query(query)  
 
-        ChatMessage.objects.create(session=session, content=reply, is_user=False)
+
+        ChatMessage.objects.create(id=uuid4(), session=session, content=reply, is_user=False)
 
         return JsonResponse({
             "reply": reply,
