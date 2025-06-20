@@ -79,10 +79,15 @@ class RAGChain:
         
         # Collect streamed response
         full_answer = []
-        for chunk in response:
-            if chunk.choices[0].delta.content:
-                full_answer.append(chunk.choices[0].delta.content)
+        # for chunk in response:
+        #     if chunk.choices[0].delta.content:
+        #         full_answer.append(chunk.choices[0].delta.content)
         
+        for chunk in response:
+            delta = chunk.choices[0].delta
+            if delta and delta.content:
+                full_answer.append(delta.content)
+
         return "".join(full_answer)
     
 
