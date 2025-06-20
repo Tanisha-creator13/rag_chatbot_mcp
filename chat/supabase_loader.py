@@ -23,10 +23,12 @@ class SupabaseKnowledgeSource:
             print(f"Embedding: {embedding[:5]}... total: {len(embedding)}")
 
             # Correct RPC call
+            embedding_str = f"[{','.join(map(str, embedding))}]"
+
             response = supabase_client.rpc(
                 "match_documents",
                 {
-                    "query_embedding": embedding,
+                    "query_embedding": embedding_str,
                     "match_count": top_k
                 }
             ).execute()
