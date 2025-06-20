@@ -21,12 +21,15 @@ class KnowledgeBaseTool(BaseModel):
             query_embedding = embeddings_model.embed_query(query)
 
             # Prepare SQL-compatible embedding string for pgvector
-            vector_str = f"cube(array{str(query_embedding)})"
+            # vector_str = f"cube(array{str(query_embedding)})"
 
             # Run the query on Supabase
             response = settings.supabase_client.rpc(
-                'match_documents',  # assumes you created a Postgres function for similarity
-                {'query_embedding': query_embedding, 'match_count': 3}
+                'match_documents',
+                {
+                    'query_embedding': query_embedding,
+                    'match_count': 3
+                }
             ).execute()
 
             if response.data:
