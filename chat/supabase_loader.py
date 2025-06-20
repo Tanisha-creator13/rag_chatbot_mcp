@@ -4,7 +4,8 @@ from openai import OpenAI
 from typing import List
 
 # Initialize Supabase client
-supabase_client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
+from django.conf import settings
+supabase_client = settings.SUPABASE_CLIENT
 
 class SupabaseKnowledgeSource:
     def __init__(self):

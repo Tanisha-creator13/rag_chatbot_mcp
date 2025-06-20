@@ -90,11 +90,12 @@ def rag_chat(request):
         ChatMessage.objects.create(id=uuid4(), session=session, content=query, is_user=True)
 
         intent = intent_classifier.classify(query)
-        if intent in predefined_responses and intent != "other":
+        if intent in predefined_responses and intent not in ["other", "faq"]:
             reply = predefined_responses[intent]
         else:
-            print(f"Calling RAG MCP with query: {query}")
-            reply = mcp.query(query)  
+            print(f"Calling RAG MCP with query: {query} (intent: {intent})")
+            reply = mcp.query(query)
+
 
 
         ChatMessage.objects.create(id=uuid4(), session=session, content=reply, is_user=False)

@@ -2,6 +2,7 @@ from langchain.embeddings import OpenAIEmbeddings
 from pydantic import BaseModel
 from supabase import create_client
 from django.conf import settings
+supabase_client = settings.SUPABASE_CLIENT
 
 class KnowledgeBaseTool(BaseModel):
     """Tool to fetch knowledge from Supabase based on semantic similarity."""

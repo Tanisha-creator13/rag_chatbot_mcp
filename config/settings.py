@@ -188,6 +188,8 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 TABLE_NAME = os.getenv("TABLE_NAME", "documents")
 
+from supabase import create_client
+SUPABASE_CLIENT = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 SUPABASE_CONFIG = {
     'URL': os.getenv('SUPABASE_URL'),
