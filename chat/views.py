@@ -1,35 +1,37 @@
-from uuid import uuid4
-from .intent_classifier import IntentClassifier
+from uuid import uuid4, UUID
 from django.http import JsonResponse
-import json
 from django.views.decorators.csrf import csrf_exempt
-from .mcp_server import MCPServer
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
+from rest_framework.permissions import IsAuthenticated
+from chat.models import ChatSession, ChatMessage
+from chat.intent_classifier import IntentClassifier
+from chat.mcp_server import MCPServer
+from chat.tools.supabase_auth import SupabaseJWTAuthentication
+import json
 
 from rest_framework import generics
 from django.contrib.auth.models import User
 from .serializers import RegisterSerializer
-from rest_framework.decorators import permission_classes
-from rest_framework.permissions import IsAuthenticated
-
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import AllowAny
 
-from rest_framework.decorators import api_view
-from chat.tools.supabase_auth import SupabaseJWTAuthentication 
-from rest_framework.decorators import authentication_classes
-from uuid import UUID
+from .models import ChatSession
+from .serializers import ChatSessionSerializer
+from .models import ChatMessage
+from .serializers import ChatMessageSerializer
 
-
-mcp = MCPServer()
-
+# Intent → Predefined
 intent_classifier = IntentClassifier()
 predefined_responses = {
     "greeting": "Hello! How can I assist you today? 😊",
-    "thanks": "You're most welcome! ",
+    "thanks": "You're most welcome!",
     "goodbye": "Goodbye! Have a great day!",
     "other": "I'm here to help with information. Could you rephrase your question?",
 }
+
+# RAG LLM server
+mcp = MCPServer()
 
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
@@ -41,9 +43,6 @@ class RegisterView(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-from .models import ChatSession, ChatMessage 
-from .serializers import ChatSessionSerializer, ChatMessageSerializer
 
 class ChatSessionListCreate(generics.ListCreateAPIView):
     serializer_class = ChatSessionSerializer
@@ -62,7 +61,7 @@ class ChatMessageList(generics.ListAPIView):
     authentication_classes = [SupabaseJWTAuthentication]
 
     def get_queryset(self):
-        session_id = self.kwargs['session_id']
+        session_id = self.kwargs["session_id"]
         return ChatMessage.objects.filter(
             session_id=session_id,
             session__user_id=self.request.user.id
@@ -77,27 +76,34 @@ def rag_chat(request):
         data = json.loads(request.body)
         query = data.get("message", "").strip()
         session_id = data.get("session_id")
-        user_id = UUID(request.user.payload["sub"])  # Supabase user ID from JWT
 
-        if not session_id:
-            return JsonResponse({"error": "session_id is required"}, status=400)
+        if not query:
+            return JsonResponse({"error": "Message is required."}, status=400)
 
-        try:
-            session = ChatSession.objects.get(id=session_id, user_id=user_id)
-        except ChatSession.DoesNotExist:
+        # Get Supabase user UUID from JWT
+        user_id = UUID(request.user.payload["sub"])
+
+        # Ensure session exists or create
+        if session_id:
+            try:
+                session = ChatSession.objects.get(id=session_id, user_id=user_id)
+            except ChatSession.DoesNotExist:
+                session = ChatSession.objects.create(id=uuid4(), user_id=user_id, title=query[:50])
+        else:
             session = ChatSession.objects.create(id=uuid4(), user_id=user_id, title=query[:50])
 
+        # Save user message
         ChatMessage.objects.create(id=uuid4(), session=session, content=query, is_user=True)
 
+        # Classify intent
         intent = intent_classifier.classify(query)
-        if intent in predefined_responses and intent not in ["other", "faq"]:
+
+        if intent in predefined_responses and intent != "other":
             reply = predefined_responses[intent]
         else:
-            print(f"Calling RAG MCP with query: {query} (intent: {intent})")
-            reply = mcp.query(query)
+            reply = mcp.query(query) or "I'm sorry, I couldn't find relevant information."
 
-
-
+        # Save bot response
         ChatMessage.objects.create(id=uuid4(), session=session, content=reply, is_user=False)
 
         return JsonResponse({
