@@ -9,7 +9,7 @@ type Message = {
   id: string;
   content: string;
   is_user: boolean;
-  session_id: string;
+  session_id: string | null;
   created_at?: string;
 };
 
@@ -113,70 +113,75 @@ export default function ChatPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!input.trim() || !activeSessionId) return;
+    if (!input.trim()) return;
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) throw new Error("User not authenticated");
+      if (!session?.access_token) throw new Error("Not authenticated");
 
-      // Save user message
-      const { data: userMsg, error: userError } = await supabase
-        .from('chat_chatmessage')
-        .insert({
-          content: input,
-          is_user: true,
-          session_id: activeSessionId,
-          user_id: session.user.id
-        })
-        .select()
-        .single();
+      // Create a new session if none is active
+      let currentSessionId = activeSessionId;
+      if (!currentSessionId) {
+        const { data, error } = await supabase
+          .from("chat_chatsession")
+          .insert({
+            title: input.slice(0, 50),
+            user_id: session.user.id,
+          })
+          .select()
+          .single();
 
-      if (userError) throw userError;
-      setMessages(prev => [...prev, userMsg]);
+        if (error) throw error;
+        currentSessionId = data.id;
+        setActiveSessionId(currentSessionId);
+        setSessions((prev) => [data, ...prev]);
+      }
+
+      // Add user's message to UI immediately
+      const userMsg = {
+        id: crypto.randomUUID(),
+        content: input,
+        is_user: true,
+        session_id: currentSessionId,
+      };
+      setMessages((prev) => [...prev, userMsg]);
       setInput("");
 
-      // Get bot response
-      const res = await fetch("/api/chat", { 
+      // Send to Django backend
+      const res = await fetch("http://localhost:8000/api/chat/", {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${session.access_token}` 
+          "Authorization": `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           message: input,
-          session_id: activeSessionId 
+          session_id: currentSessionId,
         }),
       });
 
       if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || "API request failed");
+        const err = await res.json();
+        throw new Error(err.error || "Backend error");
       }
 
-      const botResponse = await res.json();
+      const data = await res.json();
 
-      // Save bot response
-      const { data: botMsg, error: botError } = await supabase
-        .from('chat_chatmessage')
-        .insert({
-          content: botResponse.reply,
-          is_user: false,
-          session_id: activeSessionId,
-          user_id: session.user.id
-        })
-        .select()
-        .single();
+      // Add bot response to UI
+      const botMsg = {
+        id: crypto.randomUUID(),
+        content: data.reply,
+        is_user: false,
+        session_id: currentSessionId,
+      };
+      setMessages((prev) => [...prev, botMsg]);
 
-      if (botError) throw botError;
-      setMessages(prev => [...prev, botMsg]);
-
-    } catch (error) {
-      console.error('Submission error:', error);
-      if (error instanceof Error && error.message.includes("401")) {
-        await supabase.auth.signOut();
-      }
+    } catch (err) {
+      console.error("Chat error:", err);
+      alert("Something went wrong. Check your server and network logs.");
     }
   }
+
 
   // Add loading state UI
   if (loading) {
