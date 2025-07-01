@@ -196,3 +196,5 @@ SUPABASE_CONFIG = {
     'KEY': os.getenv('SUPABASE_KEY'),
     'JWT_SECRET': os.getenv('SUPABASE_JWT_SECRET')
 }
+
+LLM_MODEL = "gpt-4" #added manually
