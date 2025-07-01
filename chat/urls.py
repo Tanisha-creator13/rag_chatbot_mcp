@@ -22,4 +22,6 @@ urlpatterns = [
     
     # Main chat endpoint
     path('chat/', rag_chat, name='rag_chat'),
+    
+    path('mcp/query/', mcp_query, name='mcp_query'),
 ]
