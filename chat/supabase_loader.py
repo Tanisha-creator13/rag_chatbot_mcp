@@ -47,13 +47,14 @@ class SupabaseKnowledgeSource:
 
     # Calls a PostgreSQL stored function in Supabase named match_documents.
     def _rpc_match(self, embedding: List[float], top_k: int):
-        url = f"{settings.SUPABASE_URL}/rest/v1/rpc/match_documents"
+        url = f"{settings.SUPABASE_URL}/rest/v1/rpc/match_chunks"
         headers = {
             "apikey": settings.SUPABASE_KEY,
             "Authorization": f"Bearer {settings.SUPABASE_KEY}",
             "Content-Type": "application/json"
         }
-        payload = {"query_embedding": embedding, "match_count": top_k}
+        # payload = {"query_embedding": embedding, "match_count": top_k}
+        payload = {"query_embedding": embedding, "match_count": top_k, "similarity_threshold":0.4}
         
         try:
             resp = requests.post(url, json=payload, headers=headers, timeout=10)
