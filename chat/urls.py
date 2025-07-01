@@ -4,7 +4,8 @@ from .views import (
     RegisterView, 
     rag_chat,
     ChatSessionListCreate,
-    ChatMessageList
+    ChatMessageList,
+    mcp_query
 )
 
 urlpatterns = [
@@ -22,6 +23,6 @@ urlpatterns = [
     
     # Main chat endpoint
     path('chat/', rag_chat, name='rag_chat'),
-    
+
     path('mcp/query/', mcp_query, name='mcp_query'),
 ]
