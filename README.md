@@ -17,23 +17,6 @@ Hey, Welcome! This project implements a Retrieval-Augmented Generation (RAG) cha
 
 ## Directory Highlights
 
-- `chat/management/commands/reembed_documents.py`  
-  *Automates document chunking and embedding.*
-
-- `chat/rag_chain.py`  
-  *Core logic for combining retrieval and generation.*
-
-- `chat/supabase_loader.py`  
-  *Handles all communication with the Supabase database.*
-
-- `chat/mcp_server.py`  
-  *Exposes the chatbot as an MCP-compatible service.*
-
-- `chat/views.py`  
-  *API endpoints for chat sessions, authentication, and more.*
-
-- `config/settings.py`  
-  *Project configuration and environment variables.*
 
 ---
 
@@ -41,17 +24,13 @@ Hey, Welcome! This project implements a Retrieval-Augmented Generation (RAG) cha
 
 1. **Install dependencies**  
 - pip install -r requirements.txt
-
 2. **Set up your environment variables**  
 - Supabase URL and key
 - OpenAI API key
-
 3. **Run database migrations**  
 - python manage.py migrate
-
 4. **Process your documents** 
 - python manage.py reembed_documents
-
 5. **Start the development server**  
 - python manage.py runserver
 
