@@ -26,7 +26,7 @@ class ChatSessionSerializer(serializers.ModelSerializer):
 class ChatMessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = ChatMessage
-        fields = ['content', 'is_user', 'timestamp']
+        fields = ['content', 'is_user', 'created_at']
 
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
