@@ -148,6 +148,10 @@ from .serializers import ChatSessionSerializer
 from .models import ChatMessage
 from .serializers import ChatMessageSerializer
 
+from rest_framework.decorators import api_view
+from django.http import JsonResponse
+from chat.mcp_server import MCPServer
+
 # Set up logging
 logger = logging.getLogger(__name__)
 
@@ -196,6 +200,18 @@ class ChatMessageList(generics.ListAPIView):
             session_id=session_id,
             session__user_id=self.request.user.id
         )
+
+
+@api_view(['POST'])
+def mcp_query(request):
+    message = request.data.get('message', '')
+    mcp = MCPServer()
+    response = mcp.query(message)
+    if isinstance(response, dict):
+        return JsonResponse(response)
+    return JsonResponse({"reply": response})
+
+
 
 @csrf_exempt
 @api_view(['POST'])
