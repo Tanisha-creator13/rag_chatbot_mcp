@@ -1,6 +1,5 @@
 "use client";
-import { createClient } from '@/utils/supabase/client'
-const supabase = createClient()
+import { supabase } from '@/utils/supabase/client';
 
 interface NewChatButtonProps {
   onCreate: (sessionId: string) => void;
@@ -8,9 +7,8 @@ interface NewChatButtonProps {
 
 export default function NewChatButton({ onCreate }: NewChatButtonProps) {
   const handleNewChat = async () => {
-    console.log("New Chat button clicked");
     const { data, error } = await supabase
-      .from('chat_chatsession') // Use the correct table name
+      .from('chat_chatsession')
       .insert([{}])
       .select()
       .single();
@@ -19,7 +17,6 @@ export default function NewChatButton({ onCreate }: NewChatButtonProps) {
       console.error("Supabase error:", error);
     }
     if (data) {
-      console.log("New session created:", data);
       onCreate(data.id);
     }
   };
@@ -27,7 +24,7 @@ export default function NewChatButton({ onCreate }: NewChatButtonProps) {
   return (
     <button
       onClick={handleNewChat}
-      className="w-full p-3 mb-4 text-left hover:bg-gray-700 rounded-lg transition-colors"
+      className="w-full py-2 mb-4 bg-blue-500 hover:bg-blue-600 rounded-xl text-white font-semibold shadow transition-all"
     >
       + New Chat
     </button>
