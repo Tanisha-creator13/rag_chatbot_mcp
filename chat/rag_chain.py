@@ -110,7 +110,7 @@ class RAGChain:
             print(f"Retrieved {len(chunks)} chunks for: '{query}'")
             if chunks:
                 print(f"Top similarity: {max(similarities) if similarities else 0}")
-                print(f"First chunk: {chunks[0][:100]}...")
+                print(f"First chunk: {chunks[0]['content'][:100]}...")
             
             self.last_retrieved_docs = chunks
 
@@ -124,14 +124,14 @@ class RAGChain:
             
             # Handle definition-style questions differently
             if query.lower().startswith(("what is", "define")):
-                context = "\n\n".join(chunks)[:1200]
+                context = "\n\n".join([chunk["content"] for chunk in chunks])[:1200]
                 prompt = (
                     f"Define concisely using context:\n{context}\n\nQuestion: {query}"
                 )
                 return self._call_llm(prompt, model="gpt-4", max_tokens=100)
             
             # Standard context handling
-            context = "\n\n".join(chunks[:3])
+            context = "\n\n".join([chunk["content"] for chunk in chunks[:3]])
             prompt = f"Answer using context:\n{context}\n\nQuestion: {query}"
             return self._call_llm(prompt, model="gpt-4", max_tokens=300)
 
