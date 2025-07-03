@@ -33,11 +33,11 @@ Hey, Welcome! This project implements a Retrieval-Augmented Generation (RAG) cha
 ---
 ## Project Structure
 
-rag_chatbot_clean/
-├── chat/ # Django backend app
-├── config/ # Django settings
-├── manage.py # Django runner
-└── src/ # Next.js frontend (with API routes and UI)
+- rag_chatbot_clean/
+- ├── chat/ # Django backend app
+- ├── config/ # Django settings
+- ├── manage.py # Django runner
+- └── src/ # Next.js frontend (with API routes and UI)
 
 ---
 
