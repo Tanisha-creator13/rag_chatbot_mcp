@@ -166,6 +166,7 @@ export default function ChatPage() {
       }
 
       const data = await res.json();
+      console.log("Backend response:", data, typeof data);
 
       // Add bot response to UI
       const botMsg = {
@@ -193,7 +194,7 @@ export default function ChatPage() {
   }
 
   return (
-    <main className="flex min-h-screen bg-gray-900 text-gray-100">
+    <main className="flex min-h-screen bg-gradient-to-br from-blue-50 via-white to-gray-100 text-gray-900">
       <ChatSidebar
         sessions={sessions}
         activeSessionId={activeSessionId}
@@ -210,33 +211,35 @@ export default function ChatPage() {
                   key={msg.id}
                   className={`flex ${msg.is_user ? 'justify-end' : 'justify-start'}`}
                 >
-                  <div className={`max-w-[70%] p-3 rounded-lg ${
+                  <div className={`max-w-[70%] p-3 rounded-2xl shadow ${
                     msg.is_user 
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-700 text-gray-100"
-                  }`}>
+                      ? "bg-blue-500 text-white rounded-br-none"
+                      : "bg-white text-gray-900 rounded-bl-none border border-gray-200"
+                  }`}
+                  style={{ wordBreak: "break-word" }}
+                >
                     {msg.content}
                   </div>
                 </div>
               ))}
             </div>
-            <form onSubmit={handleSubmit} className="flex">
+            <form onSubmit={handleSubmit} className="flex mt-2">
               <input
-                className="flex-1 p-2 border-none rounded-l bg-gray-700 text-gray-100 placeholder-gray-400 focus:outline-none"
+                className="flex-1 p-3 border border-gray-300 rounded-l-2xl bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Type your message..."
               />
               <button
                 type="submit"
-                className="p-2 bg-blue-800 text-white rounded-r hover:bg-blue-700 transition-colors"
+                className="px-6 bg-blue-500 text-white rounded-r-2xl font-semibold hover:bg-blue-600 transition-colors"
               >
                 Send
               </button>
             </form>
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center">
+          <div className="flex-1 overflow-y-auto mb-4 space-y-3 px-2 py-4 transition-colors duration-200">
             Select a chat or start a new one
           </div>
         )}
