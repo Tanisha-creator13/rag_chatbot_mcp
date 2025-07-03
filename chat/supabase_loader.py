@@ -24,9 +24,8 @@ class SupabaseKnowledgeSource:
             similarities = []
             for doc in raw:
                 if self._is_valid_chunk(doc.get(self.text_column, "")):
-                    chunks.append(doc[self.text_column])
+                    chunks.append({"id": doc.get("id"), "content": doc[self.text_column]})
                     similarities.append(doc.get("similarity", 0))
-            
             return chunks[:top_k], similarities[:top_k]
 
         except Exception as e:
