@@ -3,6 +3,14 @@
 Hey, Welcome! This project implements a Retrieval-Augmented Generation (RAG) chatbot that combines the power of modern language models with your own document knowledge base.
 
 ---
+## Backend
+
+- **Django** with REST API endpoints for chat, authentication, and session management
+- **Supabase** for user data, authentication, and vector search
+- **OpenAI** integration for generating smart, context-aware answers
+- **RAG logic** for combining document retrieval with LLM responses
+
+---
 
 ## What’s Inside?
 
@@ -11,27 +19,40 @@ Hey, Welcome! This project implements a Retrieval-Augmented Generation (RAG) cha
 - **Conversational AI:** Integrates with OpenAI’s GPT models to generate helpful, context-aware responses.
 - **MCP Server Integration:** Supports Model Context Protocol for advanced query handling and future scalability.
 - **User Authentication:** Secure endpoints using Supabase JWT.
-- **Ready for Frontend:** API endpoints are designed to work seamlessly with any frontend.
 
 ---
 
-## Directory Highlights
+## Frontend
 
+- **Next.js** app for a fast, interactive user experience
+- **User authentication** with email and password (Supabase-backed)
+- **Clean chat interface** with chat history, session sidebar, and real-time messaging
+- **Styled with Tailwind CSS** for a modern, soothing look
+- **TypeScript** for type safety and maintainability
+
+---
+## Project Structure
+
+rag_chatbot_clean/
+├── chat/ # Django backend app
+├── config/ # Django settings
+├── manage.py # Django runner
+└── src/ # Next.js frontend (with API routes and UI)
 
 ---
 
-## Getting Started
+## Quick Start
 
-1. **Install dependencies**  
-- pip install -r requirements.txt
-2. **Set up your environment variables**  
-- Supabase URL and key
-- OpenAI API key
-3. **Run database migrations**  
-- python manage.py migrate
-4. **Process your documents** 
-- python manage.py reembed_documents
-5. **Start the development server**  
-- python manage.py runserver
+- **Backend:**  
+  - Configure Supabase and OpenAI keys  
+  - `python manage.py migrate`  
+  - `python manage.py runserver`
+
+- **Frontend:**  
+  - `cd src`  
+  - `npm install`  
+  - `npm run dev`
+
+---
 
 **Happy coding! If you have any questions or suggestions, open an issue or join the discussion.**
