@@ -1,7 +1,7 @@
 "use client"; 
 
 import { useState, useEffect } from 'react';
-import { createClient } from '@/utils/supabase/client';
+import { supabase } from '@/utils/supabase/client';
 interface Session {
   id: string;
   title: string;
@@ -22,43 +22,38 @@ export default function ChatSidebar({
   onSelectSession
 }: ChatSidebarProps) {
   const handleNewChat = async () => {
-    console.log("handleNewChat called");
     const newSessionId = await onCreateNew();
     if (newSessionId) {
       onSelectSession(newSessionId);
     }
   };
 
-
-
   return (
-    <div className="w-64 bg-gray-800 p-4 flex flex-col">
+    <aside className="w-72 bg-gradient-to-b from-blue-900 to-gray-800 p-4 flex flex-col shadow-lg">
       <button 
         onClick={handleNewChat}
-        className="w-full p-2 mb-4 bg-blue-600 hover:bg-blue-700 rounded text-white"
+        className="w-full py-2 mb-6 bg-blue-500 hover:bg-blue-600 rounded-xl text-white font-semibold shadow transition-all"
       >
-        New Chat
+        + New Chat
       </button>
-      
-      <div className="space-y-1 overflow-y-auto flex-1">
+      <div className="space-y-2 overflow-y-auto flex-1">
         {sessions.map((session) => (
           <div
             key={session.id}
             onClick={() => onSelectSession(session.id)}
-            className={`p-3 cursor-pointer rounded-lg ${
-              activeSessionId === session.id 
-                ? 'bg-gray-700 border-l-4 border-blue-500'
-                : 'hover:bg-gray-600'
-            } transition-colors`}
+            className={`p-3 cursor-pointer rounded-lg transition-all ${
+              activeSessionId === session.id
+                ? 'bg-blue-100 border-l-4 border-blue-500 text-blue-900 shadow'
+                : 'hover:bg-gray-200 text-gray-700'
+            }`}
           >
-            <h4 className="text-white font-medium truncate">{session.title}</h4>
-            <small className="text-gray-400 text-xs">
+            <div className="font-medium truncate">{session.title}</div>
+            <div className="text-xs text-gray-400 mt-1">
               {new Date(session.created_at).toLocaleDateString()}
-            </small>
+            </div>
           </div>
         ))}
       </div>
-    </div>
+    </aside>
   );
 }
-
