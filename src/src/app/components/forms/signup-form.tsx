@@ -1,8 +1,11 @@
+// 
+
 "use client";
 import { useState } from "react";
 import { supabase } from '@/utils/supabase/client';
 
 export function SignupForm() {
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -18,7 +21,7 @@ export function SignupForm() {
       password,
       options: {
         data: {
-          username: email.split('@')[0] // Optional: Add username to metadata
+          username: username // Store username in user metadata
         }
       }
     });
@@ -27,6 +30,7 @@ export function SignupForm() {
       setError(error.message);
     } else {
       setSuccess("Signup successful! Check your email for confirmation.");
+      setUsername("");
       setEmail("");
       setPassword("");
     }
@@ -35,6 +39,14 @@ export function SignupForm() {
   return (
     <form onSubmit={handleSubmit} className="max-w-sm mx-auto p-4 border rounded">
       <h2 className="text-xl font-semibold mb-4">Sign Up</h2>
+      <input
+        type="text"
+        placeholder="Username"
+        value={username}
+        onChange={(e) => setUsername(e.target.value)}
+        required
+        className="w-full mb-3 p-2 border rounded"
+      />
       <input
         type="email"
         placeholder="Email"
