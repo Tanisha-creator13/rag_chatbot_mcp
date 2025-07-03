@@ -10,6 +10,7 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({ username, password }),
     });
     const data = await res.json();
+    console.log("Backend response:", data, typeof data);
     
     if (!res.ok) {
       return NextResponse.json({ error: data.detail || "Login failed" }, { status: 401 });
