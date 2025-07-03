@@ -9,6 +9,7 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({ username, email, password }),
     });
     const data = await res.json();
+    console.log("Backend response:", data, typeof data);
     return NextResponse.json(data, { status: res.status });
   } catch (error) {
     return NextResponse.json({ error: "Server error" }, { status: 500 });
