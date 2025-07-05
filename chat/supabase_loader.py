@@ -2,7 +2,6 @@ from django.conf import settings
 from openai import OpenAI
 from typing import List, Tuple
 import requests
-import json
 
 class SupabaseKnowledgeSource:
     def __init__(self):
@@ -11,7 +10,11 @@ class SupabaseKnowledgeSource:
         self.text_column = "content"
         self.embedding_model = "text-embedding-3-small"
 
-    def retrieve_similar_chunks(self, query: str, top_k: int = 3) -> Tuple[List[str], List[float]]:
+    def retrieve_similar_chunks(self, query: str, top_k: int = 3) -> Tuple[List[dict], List[float]]:
+        """
+        Returns a list of chunk dicts (each with id, content, and optionally title) 
+        and a list of their similarity scores.
+        """
         try:
             # Generate query embedding
             embedding = self._get_embedding(query)
@@ -23,9 +26,16 @@ class SupabaseKnowledgeSource:
             chunks = []
             similarities = []
             for doc in raw:
-                if self._is_valid_chunk(doc.get(self.text_column, "")):
-                    chunks.append({"id": doc.get("id"), "content": doc[self.text_column]})
-                    similarities.append(doc.get("similarity", 0))
+                content = doc.get(self.text_column, "")
+                if self._is_valid_chunk(content):
+                    chunk={
+                        "id": doc.get("id"),
+                        "content": content,
+                        "similarity": doc.get("similarity", 0),
+                        "title": doc.get("title", ""),
+                    }
+                    chunks.append(chunk)
+                    similarities.append(chunk["similarity"])
             return chunks[:top_k], similarities[:top_k]
 
         except Exception as e:
