@@ -55,25 +55,27 @@ from django.core.management.base import BaseCommand
 from openai import OpenAI
 from supabase import create_client
 import os
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+import re
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
+def semantic_chunking_by_paragraph(text, min_length=40):
+    """
+    Split text into semantic chunks by paragraphs (double newlines).
+    Only keep chunks longer than min_length.
+    """
+    raw_chunks = re.split(r'\n\s*\n', text)
+    return [chunk.strip() for chunk in raw_chunks if len(chunk.strip()) > min_length]
+
 class Command(BaseCommand):
-    help = "Processes documents into chunks with embeddings"
+    help = "Processes documents into semantic (paragraph-based) chunks with embeddings"
 
     def handle(self, *args, **options):
         # Initialize clients
         client = create_client(SUPABASE_URL, SUPABASE_KEY)
         openai = OpenAI(api_key=OPENAI_API_KEY)
-        
-        # Initialize text splitter
-        text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=500,
-            chunk_overlap=50
-        )
         
         print("Fetching documents from Supabase...")
         docs_response = client.table("documents").select("id", "content").execute()
@@ -84,20 +86,24 @@ class Command(BaseCommand):
             try:
                 doc_id = doc["id"]
                 content = doc.get("content", "")
-                
+                doc_title = doc.get("title", "")
+
                 if not content or len(content.strip()) < 5:
                     print(f"Skipping empty/short content for ID {doc_id}")
                     continue
-                
+
                 print(f"Processing document: {doc_id}")
-                
-                # Split document into chunks
-                chunks = text_splitter.split_text(content)
-                print(f"Created {len(chunks)} chunks")
-                
+
+                # Semantic chunking by paragraphs
+                chunks = semantic_chunking_by_paragraph(content)
+                if doc_title:
+                    chunks = [f"{doc_title}\n{chunk}" for chunk in chunks]
+
+                print(f"Created {len(chunks)} semantic chunks")
+
                 # Delete existing chunks
                 client.table("document_chunks").delete().eq("document_id", doc_id).execute()
-                
+
                 # Process each chunk
                 for index, chunk in enumerate(chunks):
                     # Generate embedding for this chunk
@@ -106,7 +112,7 @@ class Command(BaseCommand):
                         input=chunk
                     )
                     embedding = response.data[0].embedding
-                    
+
                     # Insert chunk into document_chunks table
                     result = client.table("document_chunks").insert({
                         "document_id": doc_id,
@@ -114,7 +120,7 @@ class Command(BaseCommand):
                         "chunk_index": index,
                         "embedding": embedding
                     }).execute()
-                    
+
                     print(f"Inserted chunk {index} for document {doc_id}")
             
             except Exception as e:
