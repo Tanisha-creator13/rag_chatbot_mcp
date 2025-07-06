@@ -2,12 +2,14 @@ from django.conf import settings
 from openai import OpenAI
 from .supabase_loader import knowledge_base
 from chat.utils.question_classifier import is_generic_question
+import logging
+logger = logging.getLogger("rag_chain")
 
 class RAGChain:
     def __init__(self):
         self.knowledge_base = knowledge_base
         self.client = OpenAI(api_key=settings.OPENAI_API_KEY)
-        self.similarity_threshold = 0.4  
+        self.similarity_threshold = 0.6
         self.last_retrieved_docs = []
 
     def generate_answer(self, query: str) -> str:
@@ -20,38 +22,45 @@ class RAGChain:
                 )
 
             # Retrieve chunks with similarity scores
-            chunks, similarities = self.knowledge_base.retrieve_similar_chunks(query)
+            chunks, similarities = self.knowledge_base.retrieve_similar_chunks(query,top_k=10)
             # Add debug prints
-            print(f"Retrieved {len(chunks)} chunks for: '{query}'")
+            logger.info(f"Retrieved {len(chunks)} chunks for: '{query}'")
             if chunks:
-                print(f"Top similarity: {max(similarities) if similarities else 0}")
-                print(f"First chunk: {chunks[0]['content'][:100]}...")
+                logger.info(f"Top similarity: {max(similarities) if similarities else 0}")
+                logger.info(f"First chunk: {chunks[0]['content'][:100]}...")
             
-            self.last_retrieved_docs = chunks
+            # Filter by similarity threshold
+            filtered_chunks = []
+            filtered_similarities = []
+            for chunk, sim in zip(chunks, similarities):
+                if sim >= self.similarity_threshold:
+                    filtered_chunks.append(chunk)
+                    filtered_similarities.append(sim)
+
+            self.last_retrieved_docs = filtered_chunks
 
             # Fallback if no relevant chunks
-            if not chunks or max(similarities) < self.similarity_threshold:
+            if not filtered_chunks:
                 return self._call_llm(
-                    prompt=f"Answer using general knowledge:\n\nQuestion: {query}",
+                    prompt=(
+                    "No relevant information was found in the documents. "
+                    "If you know the answer from general knowledge, provide it. "
+                    "Otherwise, reply: 'Not found in provided documents.'\n\n"
+                    f"Question: {query}"
+                ),
                     model="gpt-4",
-                    max_tokens=300
+                    max_tokens=100
                 )
-            
-            # Handle definition-style questions differently
-            if query.lower().startswith(("what is", "define")):
-                context = "\n\n".join([chunk["content"] for chunk in chunks])[:1200]
-                prompt = (
-                    f"Define concisely using context:\n{context}\n\nQuestion: {query}"
-                )
-                return self._call_llm(prompt, model="gpt-4", max_tokens=100)
-            
-            # Standard context handling
-            context = "\n\n".join([chunk["content"] for chunk in chunks[:3]])
-            prompt = f"Answer using context:\n{context}\n\nQuestion: {query}"
+            context = "\n\n".join([chunk["content"] for chunk in filtered_chunks[:3]])
+            prompt = (
+            "Using only the information in the context below, answer the question. "
+            "If the answer is not in the context, reply: 'Not found in provided documents.'\n\n"
+            f"Context:\n{context}\n\nQuestion: {query}"
+            )
             return self._call_llm(prompt, model="gpt-4", max_tokens=300)
-
         except Exception as e:
             return f"Error: {str(e)}"
+        
 
     def _call_llm(self, prompt: str, model: str, max_tokens: int) -> str:
         try:
