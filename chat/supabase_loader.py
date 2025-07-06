@@ -63,7 +63,7 @@ class SupabaseKnowledgeSource:
             "Content-Type": "application/json"
         }
         # payload = {"query_embedding": embedding, "match_count": top_k}
-        payload = {"query_embedding": embedding, "match_count": top_k, "similarity_threshold":0.4}
+        payload = {"query_embedding": embedding, "match_count": top_k, "similarity_threshold":0.6}
         
         try:
             resp = requests.post(url, json=payload, headers=headers, timeout=10)
